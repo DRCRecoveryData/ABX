@@ -31,15 +31,13 @@ def ArgParse():
 
     :return: argparse dictionary
     """
-    # parse command line arguments
     parser = argparse.ArgumentParser(
         description="xbackup: extracts an Android ICS+ backup file.")
     parser.add_argument("ipath",
                         help="Input path.")
     parser.add_argument("opath",
-                        help="Input path.")
-    args = parser.parse_args()
-    return args
+                        help="Output path.")
+    return parser.parse_args()
 
 
 def Extract(args):
@@ -50,27 +48,28 @@ def Extract(args):
     :param args:
     :return:
     """
-    ifile = open(args.ipath, "rb")
-    ofile = open(args.opath, "wb")
-    data = ifile.read(C_BUFFER_SIZE)
-    pos = data.find("none\n") + 5
-    data = data[pos:]
-    dc = zlib.decompressobj()
-    while data:
-        ofile.write(dc.decompress(data))
+    with open(args.ipath, "rb") as ifile, open(args.opath, "wb") as ofile:
         data = ifile.read(C_BUFFER_SIZE)
-    ifile.close()
-    ofile.close()
+        pos = data.find(b"none\n") + 5  # Change to bytes
+        if pos < 5:
+            print("Error: Backup file format not recognized.")
+            return 1
+        data = data[pos:]
+        dc = zlib.decompressobj()
+        while data:
+            ofile.write(dc.decompress(data))
+            data = ifile.read(C_BUFFER_SIZE)
+    return 0
 
 
 def main():
     args = ArgParse()
     if os.path.isfile(args.ipath):
-        Extract(args)
+        return Extract(args)
     else:
-        print "Could not open input file!."
+        print("Could not open input file!")
         return 1
-    return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
